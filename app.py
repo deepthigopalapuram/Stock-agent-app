@@ -5,7 +5,7 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-from google import genai
+import google.generativeai as genai
 
 # Page Setup
 st.set_page_config(page_title="Multi-Agent Stock Research Desk", layout="wide")
@@ -18,7 +18,6 @@ col1, col2 = st.columns([1, 2], gap="large")
 
 with col1:
     st.subheader("Input Panel")
-    # Dropdown for Stock Tickers
     ticker_options = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS"]
     ticker = st.selectbox("Select Stock Ticker:", options=ticker_options)
     run_btn = st.button("Run Multi-Agent Analysis", type="primary")
@@ -29,9 +28,10 @@ with col2:
     if run_btn:
         api_key = st.secrets.get("GEMINI_API_KEY")
         if not api_key:
-            st.error("Please configure your GEMINI_API_KEY in your Streamlit app secrets (see Step 5).")
+            st.error("Please configure your GEMINI_API_KEY in your Streamlit app secrets.")
         else:
-            client = genai.Client(api_key=api_key)
+            # Configure standard generativeai library
+            genai.configure(api_key=api_key)
             
             # 1. Fetch Data & Render 6-Month Chart
             with st.spinner("Fetching 6-month market price data..."):
@@ -49,7 +49,7 @@ with col2:
                 ax.legend()
                 st.pyplot(fig)
                 
-                # 2. Run Multi-Agent Analysis
+                # 2. Run Multi-Agent Analysis via standard generativeai model call
                 with st.spinner("Multi-agents evaluating fundamentals (CRISIL-style) & risk..."):
                     prompt = f"""
                     You are a financial research team consisting of a Fundamental Analyst (CRISIL rating style) and a Risk Auditor.
@@ -59,10 +59,8 @@ with col2:
                     3. Final Risk Assessment Score (1-10).
                     Keep the output structured with clear markdown headings.
                     """
-                    response = client.models.generate_content(
-                        model="models/gemini-2.5-flash",
-                        contents=prompt
-                    )
+                    model = genai.GenerativeModel("gemini-2.0-flash")
+                    response = model.generate_content(prompt)
                     report_text = response.text
                 
                 st.success("Analysis Complete!")
