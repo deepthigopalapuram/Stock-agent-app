@@ -6,7 +6,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from google import genai
-from google.genai.errors import ServerError
+from google.genai.errors import ServerError, ClientError
 
 # Page Setup
 st.set_page_config(page_title="Multi-Agent Stock Research Desk", layout="wide")
@@ -49,7 +49,7 @@ with col2:
                 ax.legend()
                 st.pyplot(fig)
                 
-                # 2. Run Multi-Agent Analysis with Automatic Model Fallback
+                # 2. Run Multi-Agent Analysis with Resilient Multi-Model Fallback
                 with st.spinner("Multi-agents evaluating fundamentals (CRISIL-style) & risk..."):
                     prompt = f"""
                     You are a financial research team consisting of a Fundamental Analyst (CRISIL rating style) and a Risk Auditor.
@@ -60,8 +60,8 @@ with col2:
                     Keep the output structured with clear markdown headings.
                     """
                     
-                    # Try fallback models sequentially if high demand/503 errors occur
-                    models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
+                    # Sequence of robust models to attempt sequentially
+                    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-3.8-flash"]
                     response = None
                     
                     for model_name in models_to_try:
@@ -70,9 +70,10 @@ with col2:
                                 model=model_name,
                                 contents=prompt
                             )
-                            break # Success, exit loop
-                        except ServerError:
-                            continue # Try next model if server is busy
+                            break  # Success! Exit loop.
+                        except (ServerError, ClientError) as e:
+                            # If a model hits capacity limits or isn't found, try the next option automatically
+                            continue
                             
                 if response:
                     report_text = response.text
@@ -99,6 +100,6 @@ with col2:
                         mime="application/pdf"
                     )
                 else:
-                    st.error("All AI models are currently experiencing high demand. Please wait a moment and try clicking the button again.")
+                    st.error("⚠️ All server endpoints are currently experiencing high traffic or traffic limits. Please wait 10 seconds and click **Run Multi-Agent Analysis** again.")
     else:
         st.info("👈 Select a stock ticker from the dropdown on the left and click **Run Multi-Agent Analysis**.")
