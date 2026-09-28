@@ -61,7 +61,20 @@ with col2:
             if df.empty:
                 st.error("Invalid ticker or no data found.")
             else:
-                st.write(f"📈 **6-Month Price Action & Trend: {ticker}**")
+                # Extract Current Market Price (CMP) from the latest close
+                try:
+                    # Handle multi-index columns or standard DataFrame layout returned by yfinance
+                    latest_close = df['Close'].iloc[-1]
+                    if isinstance(latest_close, pd.Series):
+                        cmp_value = latest_close.iloc[0]
+                    else:
+                        cmp_value = latest_close
+                    cmp_str = f"₹{float(cmp_value):,.2f}"
+                except Exception:
+                    cmp_str = "Latest available market price"
+
+                st.write(f"📈 **6-Month Price Action & Trend: {ticker}** (CMP: {cmp_str})")
+                
                 fig, ax = plt.subplots(figsize=(8, 3.5))
                 ax.plot(df.index, df['Close'], label="Close Price", color="#1f77b4", linewidth=2)
                 ax.set_title(f"6-Month Historical Performance: {ticker}")
@@ -74,9 +87,9 @@ with col2:
                 with st.spinner("Multi-agents evaluating fundamentals (DURGA framework) & risk..."):
                     prompt = f"""
                     You are a financial research team consisting of a Fundamental Analyst (using the DURGA Evaluation Framework) and a Risk Auditor.
-                    Analyze the stock {ticker}. Provide:
+                    Analyze the stock {ticker} keeping in mind its Current Market Price (CMP) of approximately {cmp_str}. Provide:
                     1. Fundamental Valuation & Credit Assessment (Economic Moat, Balance Sheet Health, Governance Rating under the DURGA framework).
-                    2. Explicit Valuation Grade (Choose strictly between Grade A: Undervalued/Deep Value, Grade B: Fairly Valued, or Grade C: Overvalued/Speculative) along with a clear, concise fundamental Rationale (2-3 sentences).
+                    2. Explicit Valuation Grade (Choose strictly between Grade A: Undervalued/Deep Value, Grade B: Fairly Valued, or Grade C: Overvalued/Speculative) along with a clear, concise fundamental Rationale. The rationale must explicitly mention the Current Market Price (CMP) and your estimated intrinsic Fair Value for the script.
                     3. Quantitative & Technical Summary (Trend direction, support/resistance levels).
                     4. Final Risk Assessment Score (1-10).
                     Ensure all nomenclature references DURGA instead of any other rating agency. Keep output structured with markdown headings.
