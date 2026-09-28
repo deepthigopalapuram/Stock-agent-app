@@ -13,19 +13,16 @@ from google.genai.errors import ServerError, ClientError
 st.set_page_config(page_title="Multi-Agent Stock Research Desk", layout="wide")
 
 st.title("🤖 Multi-Agent Stock Analysis & Fundamental Research Desk")
-st.markdown("Run automated quantitative, fundamental, and risk evaluations with comprehensive valuation grades and downloadable PDF reports.")
+st.markdown("Run automated quantitative, fundamental, and risk evaluations with valuation grades, fair price estimates, and downloadable PDF reports.")
 
 # Cache the complete Indian Stock Exchange equity list to optimize performance
 @st.cache_data(ttl=86400)
 def load_indian_tickers():
     try:
-        # Fetching official NSE equity list
         df = pd.read_csv("https://archives.nseindia.com/content/equities/EQUITY_L.csv")
-        # Format tickers with .NS suffix for yfinance compatibility
         tickers = sorted([f"{sym}.NS" for sym in df['SYMBOL'].dropna().unique()])
         return tickers
     except Exception:
-        # Fallback default universe if network fetch fails
         return ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "ITC.NS", "BHARTIARTL.NS"]
 
 # Cache market price downloads to maximize execution speed
@@ -40,7 +37,6 @@ with col1:
     st.subheader("Input Panel")
     all_tickers = load_indian_tickers()
     
-    # Allow searching or selecting from the full Indian market universe
     ticker = st.selectbox("Select or Search Stock Ticker:", options=all_tickers, index=all_tickers.index("RELIANCE.NS") if "RELIANCE.NS" in all_tickers else 0)
     run_btn = st.button("Run Multi-Agent Analysis", type="primary")
 
@@ -61,20 +57,9 @@ with col2:
             if df.empty:
                 st.error("Invalid ticker or no data found.")
             else:
-                # Extract Current Market Price (CMP) from the latest close
-                try:
-                    # Handle multi-index columns or standard DataFrame layout returned by yfinance
-                    latest_close = df['Close'].iloc[-1]
-                    if isinstance(latest_close, pd.Series):
-                        cmp_value = latest_close.iloc[0]
-                    else:
-                        cmp_value = latest_close
-                    cmp_str = f"₹{float(cmp_value):,.2f}"
-                except Exception:
-                    cmp_str = "Latest available market price"
-
-                st.write(f"📈 **6-Month Price Action & Trend: {ticker}** (CMP: {cmp_str})")
+                latest_price = float(df['Close'].iloc[-1])
                 
+                st.write(f"📈 **6-Month Price Action & Trend: {ticker}** (Latest CMP: ₹{latest_price:.2f})")
                 fig, ax = plt.subplots(figsize=(8, 3.5))
                 ax.plot(df.index, df['Close'], label="Close Price", color="#1f77b4", linewidth=2)
                 ax.set_title(f"6-Month Historical Performance: {ticker}")
@@ -83,19 +68,19 @@ with col2:
                 ax.legend()
                 st.pyplot(fig)
                 
-                # 2. Run Multi-Agent Analysis with DURGA Framework & Valuation Grading
-                with st.spinner("Multi-agents evaluating fundamentals (DURGA framework) & risk..."):
+                # 2. Run Multi-Agent Analysis with DURGA Framework, CMP, & Fair Price Rationale
+                with st.spinner("Multi-agents evaluating fundamentals (DURGA framework) & pricing..."):
                     prompt = f"""
                     You are a financial research team consisting of a Fundamental Analyst (using the DURGA Evaluation Framework) and a Risk Auditor.
-                    Analyze the stock {ticker} keeping in mind its Current Market Price (CMP) of approximately {cmp_str}. Provide:
+                    Analyze the stock {ticker} (Current Market Price approx: ₹{latest_price:.2f}). Provide:
                     1. Fundamental Valuation & Credit Assessment (Economic Moat, Balance Sheet Health, Governance Rating under the DURGA framework).
-                    2. Explicit Valuation Grade (Choose strictly between Grade A: Undervalued/Deep Value, Grade B: Fairly Valued, or Grade C: Overvalued/Speculative) along with a clear, concise fundamental Rationale. The rationale must explicitly mention the Current Market Price (CMP) and your estimated intrinsic Fair Value for the script.
-                    3. Quantitative & Technical Summary (Trend direction, support/resistance levels).
-                    4. Final Risk Assessment Score (1-10).
+                    2. Explicit Valuation Grade (Choose strictly between Grade A: Undervalued/Deep Value, Grade B: Fairly Valued, or Grade C: Overvalued/Speculative).
+                    3. Valuation Rationale, explicitly comparing the **Current Market Price (CMP)** of ₹{latest_price:.2f} against the estimated **Fair Price / Intrinsic Value**, providing a clear fundamental justification (2-3 sentences explaining the margin of safety or premium).
+                    4. Quantitative & Technical Summary (Trend direction, support/resistance levels).
+                    5. Final Risk Assessment Score (1-10).
                     Ensure all nomenclature references DURGA instead of any other rating agency. Keep output structured with markdown headings.
                     """
                     
-                    # Resilient fallback sequence
                     models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
                     response = None
                     
