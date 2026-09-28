@@ -80,7 +80,6 @@ with col2:
                 st.write(f"📈 **6-Month Price Action & Trend: {ticker}** (CMP: {cmp_str})")
                 
                 fig, ax = plt.subplots(figsize=(8, 3.5))
-                # Handle potential DataFrame plotting format for close prices cleanly
                 plot_close = df['Close'].iloc[:, 0] if isinstance(df['Close'], pd.DataFrame) else df['Close']
                 ax.plot(df.index, plot_close, label="Close Price", color="#1f77b4", linewidth=2)
                 ax.set_title(f"6-Month Historical Performance: {ticker}")
