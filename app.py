@@ -57,6 +57,7 @@ with col2:
             if df.empty:
                 st.error("Invalid ticker or no data found.")
             else:
+                # Extract latest close price for reference
                 latest_price = float(df['Close'].iloc[-1])
                 
                 st.write(f"📈 **6-Month Price Action & Trend: {ticker}** (Latest CMP: ₹{latest_price:.2f})")
@@ -75,7 +76,7 @@ with col2:
                     Analyze the stock {ticker} (Current Market Price approx: ₹{latest_price:.2f}). Provide:
                     1. Fundamental Valuation & Credit Assessment (Economic Moat, Balance Sheet Health, Governance Rating under the DURGA framework).
                     2. Explicit Valuation Grade (Choose strictly between Grade A: Undervalued/Deep Value, Grade B: Fairly Valued, or Grade C: Overvalued/Speculative).
-                    3. Valuation Rationale, explicitly comparing the **Current Market Price (CMP)** of ₹{latest_price:.2f} against the estimated **Fair Price / Intrinsic Value**, providing a clear fundamental justification (2-3 sentences explaining the margin of safety or premium).
+                    3. Valuation Rationale, including the **Current Market Price (CMP)**, an estimated **Fair Price / Intrinsic Value**, and a clear fundamental justification (2-3 sentences explaining the margin of safety or premium).
                     4. Quantitative & Technical Summary (Trend direction, support/resistance levels).
                     5. Final Risk Assessment Score (1-10).
                     Ensure all nomenclature references DURGA instead of any other rating agency. Keep output structured with markdown headings.
