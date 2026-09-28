@@ -61,7 +61,7 @@ with col2:
             if df.empty:
                 st.error("Invalid ticker or no data found.")
             else:
-                # Robust extraction of Current Market Price (CMP) preventing Series float errors
+                # Fully safe extraction of Current Market Price (CMP) preventing Series float errors
                 try:
                     close_data = df['Close']
                     if isinstance(close_data, pd.DataFrame):
