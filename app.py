@@ -6,6 +6,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from google import genai
+from google.genai.errors import ServerError
 
 # Page Setup
 st.set_page_config(page_title="Multi-Agent Stock Research Desk", layout="wide")
@@ -30,7 +31,6 @@ with col2:
         if not api_key:
             st.error("Please configure your GEMINI_API_KEY in your Streamlit app secrets.")
         else:
-            # Initialize the modern Google GenAI client
             client = genai.Client(api_key=api_key)
             
             # 1. Fetch Data & Render 6-Month Chart
@@ -49,7 +49,7 @@ with col2:
                 ax.legend()
                 st.pyplot(fig)
                 
-                # 2. Run Multi-Agent Analysis via the correct client.models API
+                # 2. Run Multi-Agent Analysis with Automatic Model Fallback
                 with st.spinner("Multi-agents evaluating fundamentals (CRISIL-style) & risk..."):
                     prompt = f"""
                     You are a financial research team consisting of a Fundamental Analyst (CRISIL rating style) and a Risk Auditor.
@@ -59,33 +59,46 @@ with col2:
                     3. Final Risk Assessment Score (1-10).
                     Keep the output structured with clear markdown headings.
                     """
-                    response = client.models.generate_content(
-                        model="gemini-3.8-flash",
-                        contents=prompt
-                    )
+                    
+                    # Try fallback models sequentially if high demand/503 errors occur
+                    models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
+                    response = None
+                    
+                    for model_name in models_to_try:
+                        try:
+                            response = client.models.generate_content(
+                                model=model_name,
+                                contents=prompt
+                            )
+                            break # Success, exit loop
+                        except ServerError:
+                            continue # Try next model if server is busy
+                            
+                if response:
                     report_text = response.text
-                
-                st.success("Analysis Complete!")
-                st.markdown(report_text)
-                
-                # 3. Generate Downloadable PDF Report
-                pdf_buffer = BytesIO()
-                doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
-                styles = getSampleStyleSheet()
-                
-                story = [
-                    Paragraph(f"Comprehensive Research Report: {ticker}", styles['Title']),
-                    Spacer(1, 12),
-                    Paragraph(report_text.replace('\n', '<br/>'), styles['Normal'])
-                ]
-                doc.build(story)
-                pdf_buffer.seek(0)
-                
-                st.download_button(
-                    label="📥 Download Detailed Report as PDF",
-                    data=pdf_buffer,
-                    file_name=f"{ticker}_comprehensive_report.pdf",
-                    mime="application/pdf"
-                )
+                    st.success("Analysis Complete!")
+                    st.markdown(report_text)
+                    
+                    # 3. Generate Downloadable PDF Report
+                    pdf_buffer = BytesIO()
+                    doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+                    styles = getSampleStyleSheet()
+                    
+                    story = [
+                        Paragraph(f"Comprehensive Research Report: {ticker}", styles['Title']),
+                        Spacer(1, 12),
+                        Paragraph(report_text.replace('\n', '<br/>'), styles['Normal'])
+                    ]
+                    doc.build(story)
+                    pdf_buffer.seek(0)
+                    
+                    st.download_button(
+                        label="📥 Download Detailed Report as PDF",
+                        data=pdf_buffer,
+                        file_name=f"{ticker}_comprehensive_report.pdf",
+                        mime="application/pdf"
+                    )
+                else:
+                    st.error("All AI models are currently experiencing high demand. Please wait a moment and try clicking the button again.")
     else:
         st.info("👈 Select a stock ticker from the dropdown on the left and click **Run Multi-Agent Analysis**.")
