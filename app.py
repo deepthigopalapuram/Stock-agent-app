@@ -5,7 +5,7 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-import google.generativeai as genai
+from google import genai
 
 # Page Setup
 st.set_page_config(page_title="Multi-Agent Stock Research Desk", layout="wide")
@@ -30,8 +30,8 @@ with col2:
         if not api_key:
             st.error("Please configure your GEMINI_API_KEY in your Streamlit app secrets.")
         else:
-            # Configure standard generativeai library
-            genai.configure(api_key=api_key)
+            # Initialize the modern Google GenAI client
+            client = genai.Client(api_key=api_key)
             
             # 1. Fetch Data & Render 6-Month Chart
             with st.spinner("Fetching 6-month market price data..."):
@@ -49,7 +49,7 @@ with col2:
                 ax.legend()
                 st.pyplot(fig)
                 
-                # 2. Run Multi-Agent Analysis via standard generativeai model call
+                # 2. Run Multi-Agent Analysis via the correct client.models API
                 with st.spinner("Multi-agents evaluating fundamentals (CRISIL-style) & risk..."):
                     prompt = f"""
                     You are a financial research team consisting of a Fundamental Analyst (CRISIL rating style) and a Risk Auditor.
@@ -59,8 +59,10 @@ with col2:
                     3. Final Risk Assessment Score (1-10).
                     Keep the output structured with clear markdown headings.
                     """
-                    model = genai.GenerativeModel("gemini-2.0-flash")
-                    response = model.generate_content(prompt)
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash",
+                        contents=prompt
+                    )
                     report_text = response.text
                 
                 st.success("Analysis Complete!")
